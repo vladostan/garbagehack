@@ -5,9 +5,9 @@ import cv2
 import matplotlib.pyplot as plt
 
 # In[]:
-img_file = "1"
+img_file = "inet"
 img_file = "a (7)"
-img_file = "lal"
+img_file = "crop"
 img = plt.imread("imgs/" + img_file + ".jpg")
 plt.imshow(img)
 
@@ -59,8 +59,9 @@ plt.show()
 # In[]:
 nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
 
-areas = np.sort(stats[:,-1])[::-1][1:]
-sizes = stats[1:, -1]; nb_components = nb_components - 1
+#areas = np.sort(stats[:,-1])[::-1][1:]
+sizes = stats[1:, -1] 
+nb_components -= 1
 
 min_size = 250
 
