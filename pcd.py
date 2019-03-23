@@ -40,6 +40,8 @@ print(result.shape)
 pcd.points = Vector3dVector(result)
 #draw_geometries([pcd, mesh_frame])
 
+
+
 # In[]:
 np_points = np.asarray(pcd.points)
 asd = np_points[np_points[:,-1]>0.01]
@@ -51,7 +53,7 @@ np_points = np.asarray(pcd.points)
 qwe = np.zeros_like(asd)
 qwe[:,:2] = np_points[:,:2]
 pcd.points = Vector3dVector(qwe)
-draw_geometries([pcd, mesh_frame])
+#draw_geometries([pcd, mesh_frame])
 
 np_points = np.asarray(pcd.points)
 # pcd_new = PointCloud()
@@ -63,38 +65,102 @@ from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 
-wcss = []
-for i in range(1, 11):
-    kmeans = KMeans(n_clusters = i, init = 'k-means++', random_state = 42)
-    kmeans.fit(np_points)
-    wcss.append(kmeans.inertia_)
-plt.plot(range(1, 11), wcss)
-plt.title('The Elbow Method')
-plt.xlabel('Number of clusters')
-plt.ylabel('WCSS')
-plt.show()
+# In[]:
+#kmeans = KMeans(n_clusters = 3, init = 'k-means++', random_state = 42)
+#y_kmeans = kmeans.fit_predict(np_points)
+#
+#gmix = GaussianMixture(n_components=3)
+#y_gmix = gmix.fit_predict(np_points)
+#
+## In[]:
+#plt.scatter(np_points[y_gmix == 0, 0], np_points[y_gmix == 0, 1], s = 10, c = 'red', label = 'Cluster 1')
+#plt.scatter(np_points[y_gmix == 1, 0], np_points[y_gmix == 1, 1], s = 10, c = 'blue', label = 'Cluster 2')
+#plt.scatter(np_points[y_gmix == 2, 0], np_points[y_gmix == 2, 1], s = 10, c = 'green', label = 'Cluster 3')
+##plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s = 300, c = 'yellow', label = 'Centroids')
+#plt.legend()
+#plt.show()
 
 # In[]:
-kmeans = KMeans(n_clusters = 3, init = 'k-means++', random_state = 42)
-y_kmeans = kmeans.fit_predict(np_points)
+decimals = 2
+np_points = np.around(np_points, decimals=decimals)
 
-gmix = GaussianMixture(n_components=3)
-y_gmix = gmix.fit_predict(np_points)
+def unique_rows(a):
+    a = np.ascontiguousarray(a)
+    unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
+    return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
 
-# In[]:
-plt.scatter(np_points[y_gmix == 0, 0], np_points[y_gmix == 0, 1], s = 10, c = 'red', label = 'Cluster 1')
-plt.scatter(np_points[y_gmix == 1, 0], np_points[y_gmix == 1, 1], s = 10, c = 'blue', label = 'Cluster 2')
-plt.scatter(np_points[y_gmix == 2, 0], np_points[y_gmix == 2, 1], s = 10, c = 'green', label = 'Cluster 3')
-#plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s = 300, c = 'yellow', label = 'Centroids')
-plt.legend()
-plt.show()
-
-# In[]:
-np_points = np.around(np_points, decimals=2)
+np_points = unique_rows(np_points)
 pcd.points = Vector3dVector(np_points)
-draw_geometries([pcd, mesh_frame])
+#draw_geometries([pcd, mesh_frame])
 
 # In[]:
-x_range = np.max(np_points[:,0]) - np.min(np_points[:,0])
-y_range = np.max(np_points[:,1]) - np.min(np_points[:,1])
+import cv2
 
+x_min = np.min(np_points[:,0])
+y_min = np.min(np_points[:,1])
+x_range = np.around(np.max(np_points[:,0]) - x_min, decimals=decimals)
+y_range = np.around(np.max(np_points[:,1]) - y_min, decimals=decimals)
+
+np_points_shifted = np_points[:,:2]
+np_points_shifted[:,0] -= x_min
+np_points_shifted[:,1] -= y_min
+
+mask = np.zeros((int(x_range*math.pow(10,decimals)+1),int(y_range*math.pow(10,decimals)+1)), dtype=np.uint8)
+mask = np.zeros((int(y_range*math.pow(10,decimals)+1),int(x_range*math.pow(10,decimals)+1)), dtype=np.uint8)
+
+for (x,y) in np_points_shifted:
+#    mask[int(x*math.pow(10,decimals)), int(y*math.pow(10,decimals))] = True
+    mask[int(y*math.pow(10,decimals)), int(x*math.pow(10,decimals))] = True
+
+
+plt.imshow(mask)
+
+kernel = np.ones((2, 2), np.uint8)
+
+closing = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+plt.imshow(closing)
+
+# In[]:
+nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(closing, connectivity=8)
+
+xy = centroids[1:].astype(np.int32)/math.pow(10,decimals)
+
+# In[:
+result2 = result.copy()
+
+result2 = np.around(result2, decimals=decimals)
+
+def unique_rows(a):
+    a = np.ascontiguousarray(a)
+    unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
+    return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
+
+result2 = unique_rows(result2)
+
+z = []
+for j in range(len(xy)):
+    for i in range(len(result2)):
+        if result2[i,0] == np.around(xy[j,0]+x_min, decimals=decimals) and result2[i,1] == np.around(xy[j,1]+y_min, decimals=decimals):
+            print(i)
+            print(result2[i,2])
+            z.append(result2[i,2])
+        
+xyz = np.zeros((len(xy), 3))
+for i in range(len(xyz)):
+    xyz[i] = [xy[i,0]+x_min, xy[i,1]+y_min, z[i]]
+
+print(xyz)
+ 
+colors = [[0, 1, 0] for i in range(len(pcd.points))]
+
+pcd.points = Vector3dVector(result2)
+pcd.colors = Vector3dVector(colors)
+#draw_geometries([pcd, mesh_frame])
+
+# In[]:
+mesh_frame_a = create_mesh_coordinate_frame(size=0.1, origin=xyz[0])
+mesh_frame_b = create_mesh_coordinate_frame(size=0.1, origin=xyz[1])
+mesh_frame_c = create_mesh_coordinate_frame(size=0.1, origin=xyz[2])
+
+draw_geometries([pcd, mesh_frame, mesh_frame_a, mesh_frame_b, mesh_frame_c])
