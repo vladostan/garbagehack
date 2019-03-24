@@ -29,6 +29,7 @@ def rotation_matrix(axis, theta):
 def get_trash_coords(image_no=10):
     thresh = 2
     pcd = read_point_cloud('pcd/pcd/learn{}.pcd'.format(image_no))
+    draw_geometries([pcd])
     np_points = np.asarray(pcd.points)
     print(np_points.shape)
     np_points = np_points[np.sqrt(np.power(np_points[:, 0], 2) + np.power(np_points[:, 1], 2)
